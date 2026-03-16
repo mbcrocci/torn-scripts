@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Bounty Helper
 // @namespace    torn.bounty.helper
-// @version      0.2.0
+// @version      0.2.1
 // @updateURL   https://github.com/mbcrocci/torn-scripts/raw/main/bounty_helper.js
 // @downloadURL https://github.com/mbcrocci/torn-scripts/raw/main/bounty_helper.js
 // @description  Quick amount and quantity helper for placing war bounties faster.
@@ -196,12 +196,12 @@
     if (exactMatch) return exactMatch;
 
     const selectors = [
-      '.place-buttons .torn-btn',
+      ".place-buttons .torn-btn",
       'button[type="submit"]',
       'input[type="submit"]',
-      '.add-bounties-wrap button',
+      ".add-bounties-wrap button",
       '.add-bounties-wrap input[type="button"]',
-      '.add-bounties-wrap a.button',
+      ".add-bounties-wrap a.button",
     ];
 
     for (const selector of selectors) {
