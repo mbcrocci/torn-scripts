@@ -19,9 +19,6 @@
   const DEFAULT_AMOUNTS = [200000, 300000, 500000, 800000, 1000000];
   const DEFAULT_QTYS = [1, 2, 5, 10];
   const PANEL_ID = "bounty-helper-panel";
-  const STATUS_ID = "bounty-helper-status";
-
-  let observerDebounce = null;
 
   function isAddBountyPage() {
     const params = new URLSearchParams(window.location.search);
@@ -64,33 +61,42 @@
     return String(amount);
   }
 
+  function getStorageItem(key) {
+    try {
+      return window.localStorage ? window.localStorage.getItem(key) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function setStorageItem(key, value) {
+    try {
+      if (!window.localStorage) return false;
+      window.localStorage.setItem(key, value);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   function getSelectedAmount() {
-    return (
-      parseNumber(localStorage.getItem(STORAGE.amount)) || DEFAULT_AMOUNTS[0]
-    );
+    return parseNumber(getStorageItem(STORAGE.amount)) || DEFAULT_AMOUNTS[0];
   }
 
   function setSelectedAmount(amount) {
-    localStorage.setItem(STORAGE.amount, String(parseNumber(amount)));
+    setStorageItem(STORAGE.amount, String(parseNumber(amount)));
   }
 
   function getSelectedQty() {
     const qty = parseInt(
-      localStorage.getItem(STORAGE.qty) || String(DEFAULT_QTYS[0]),
+      getStorageItem(STORAGE.qty) || String(DEFAULT_QTYS[0]),
       10,
     );
     return Number.isFinite(qty) && qty > 0 ? qty : DEFAULT_QTYS[0];
   }
 
   function setSelectedQty(qty) {
-    localStorage.setItem(STORAGE.qty, String(qty));
-  }
-
-  function setStatus(message, type = "info") {
-    const el = document.getElementById(STATUS_ID);
-    if (!el) return;
-    el.textContent = message;
-    el.dataset.type = type;
+    setStorageItem(STORAGE.qty, String(qty));
   }
 
   function setNativeValue(input, value) {
@@ -181,28 +187,59 @@
   }
 
   function applySelections() {
-    const amountOk = applyAmount();
-    const qtyOk = applyQuantity();
+    applyAmount();
+    applyQuantity();
+  }
 
-    if (amountOk && qtyOk) {
-      setStatus(
-        `Applied ${formatMoney(getSelectedAmount())} ×${getSelectedQty()}`,
-        "ok",
-      );
-      return;
+  function syncAmountFromPage() {
+    const inputs = findRewardInputs();
+    const amount = parseNumber(inputs[1]?.value || inputs[0]?.value);
+    if (!amount) return;
+    setSelectedAmount(amount);
+    renderSelections();
+  }
+
+  function syncQuantityFromPage() {
+    const input = findQtyInput();
+    const slider = findQtySlider();
+    const qty = parseInt(
+      input?.value ||
+        slider?.dataset.value ||
+        slider?.getAttribute("aria-valuenow") ||
+        slider?.value ||
+        "",
+      10,
+    );
+
+    if (!Number.isFinite(qty) || qty <= 0) return;
+    setSelectedQty(qty);
+    renderSelections();
+  }
+
+  function bindSyncListeners() {
+    const rewardInputs = findRewardInputs();
+    rewardInputs.forEach((input) => {
+      if (input.dataset.bountyHelperSyncBound === "1") return;
+      input.dataset.bountyHelperSyncBound = "1";
+      input.addEventListener("input", syncAmountFromPage);
+      input.addEventListener("change", syncAmountFromPage);
+      input.addEventListener("blur", syncAmountFromPage);
+    });
+
+    const qtyInput = findQtyInput();
+    if (qtyInput && qtyInput.dataset.bountyHelperSyncBound !== "1") {
+      qtyInput.dataset.bountyHelperSyncBound = "1";
+      qtyInput.addEventListener("input", syncQuantityFromPage);
+      qtyInput.addEventListener("change", syncQuantityFromPage);
     }
 
-    if (!amountOk && !qtyOk) {
-      setStatus("Could not find reward or quantity field", "error");
-      return;
+    const qtySlider = findQtySlider();
+    if (qtySlider && qtySlider.dataset.bountyHelperSyncBound !== "1") {
+      qtySlider.dataset.bountyHelperSyncBound = "1";
+      qtySlider.addEventListener("input", syncQuantityFromPage);
+      qtySlider.addEventListener("change", syncQuantityFromPage);
+      qtySlider.addEventListener("mouseup", syncQuantityFromPage);
     }
-
-    if (!amountOk) {
-      setStatus("Could not find the reward per hospitalization field", "error");
-      return;
-    }
-
-    setStatus("Could not find the quantity field", "error");
   }
 
   function createButton(label, onClick, className = "") {
@@ -232,14 +269,7 @@
         () => {
           setSelectedAmount(amount);
           renderSelections();
-          if (applyAmount(amount)) {
-            setStatus(`Reward set to ${formatMoney(amount)}`, "ok");
-          } else {
-            setStatus(
-              "Could not find the reward per hospitalization field",
-              "error",
-            );
-          }
+          applyAmount(amount);
         },
         "bounty-helper-chip",
       );
@@ -254,11 +284,7 @@
         () => {
           setSelectedQty(qty);
           renderSelections();
-          if (applyQuantity(qty)) {
-            setStatus(`Quantity set to ${qty}`, "ok");
-          } else {
-            setStatus("Could not find the quantity field", "error");
-          }
+          applyQuantity(qty);
         },
         "bounty-helper-chip",
       );
@@ -267,8 +293,10 @@
       qtyWrap.appendChild(button);
     });
 
+    const listingFee = Math.round(selectedAmount * 0.5);
+    const total = selectedQty * selectedAmount + listingFee;
     const summary = panel.querySelector("[data-role='summary']");
-    summary.textContent = `Ready: ${selectedQty} × ${formatMoney(selectedAmount)}`;
+    summary.textContent = `Total: ${formatMoney(total)}`;
   }
 
   function injectStyles() {
@@ -344,13 +372,6 @@
         margin-left: auto;
         white-space: nowrap;
       }
-      #${STATUS_ID} {
-        margin-top: 6px;
-        font-size: 11px;
-        color: #98a2b3;
-      }
-      #${STATUS_ID}[data-type='ok'] { color: #8bc34a; }
-      #${STATUS_ID}[data-type='error'] { color: #ef5350; }
     `;
 
     document.head.appendChild(style);
@@ -370,14 +391,13 @@
       panel.id = PANEL_ID;
       panel.innerHTML = `
         <div class="bounty-helper-row">
-          <span class="bounty-helper-label">Quick:</span>
+          <span class="bounty-helper-label">Reward:</span>
           <div class="bounty-helper-grid" data-role="amounts"></div>
           <span class="bounty-helper-label">Qty:</span>
           <div class="bounty-helper-grid" data-role="qtys"></div>
           <button type="button" class="bounty-helper-main" id="bounty-helper-apply">Apply</button>
           <div class="bounty-helper-summary" data-role="summary"></div>
         </div>
-        <div id="${STATUS_ID}"></div>
       `;
 
       panel
@@ -394,17 +414,9 @@
 
   function init() {
     if (!isAddBountyPage()) return;
-
     buildPanel();
-
-    const observer = new MutationObserver(() => {
-      if (observerDebounce) window.clearTimeout(observerDebounce);
-      observerDebounce = window.setTimeout(() => {
-        buildPanel();
-      }, 150);
-    });
-
-    observer.observe(document.body, { childList: true, subtree: true });
+    bindSyncListeners();
+    applySelections();
   }
 
   if (document.readyState === "loading") {
