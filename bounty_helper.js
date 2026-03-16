@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Bounty Helper
 // @namespace    torn.bounty.helper
-// @version      0.2.1
+// @version      0.2.2
 // @updateURL   https://github.com/mbcrocci/torn-scripts/raw/main/bounty_helper.js
 // @downloadURL https://github.com/mbcrocci/torn-scripts/raw/main/bounty_helper.js
 // @description  Quick amount and quantity helper for placing war bounties faster.
@@ -225,11 +225,24 @@
     return null;
   }
 
+  function findConfirmYesButton() {
+    return document.querySelector(".confirm-buttons a.yes");
+  }
+
+  function clickConfirmYesButton() {
+    const button = findConfirmYesButton();
+    if (!button) return false;
+
+    button.click();
+    return true;
+  }
+
   function clickPlaceButton() {
     const button = findPlaceButton();
     if (!button) return false;
 
     button.click();
+    window.setTimeout(clickConfirmYesButton, 300);
     return true;
   }
 
