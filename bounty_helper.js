@@ -189,9 +189,59 @@
     return true;
   }
 
-  function applySelections() {
-    applyAmount();
-    applyQuantity();
+  function findPlaceButton() {
+    const exactMatch = document.querySelector(
+      '.place-buttons .torn-btn[value="PLACE"]',
+    );
+    if (exactMatch) return exactMatch;
+
+    const selectors = [
+      '.place-buttons .torn-btn',
+      'button[type="submit"]',
+      'input[type="submit"]',
+      '.add-bounties-wrap button',
+      '.add-bounties-wrap input[type="button"]',
+      '.add-bounties-wrap a.button',
+    ];
+
+    for (const selector of selectors) {
+      const candidates = Array.from(document.querySelectorAll(selector));
+      const match = candidates.find((element) => {
+        const text = (
+          element.textContent ||
+          element.value ||
+          element.getAttribute("aria-label") ||
+          ""
+        )
+          .trim()
+          .toLowerCase();
+
+        return text === "place" || text === "place bounty";
+      });
+
+      if (match) return match;
+    }
+
+    return null;
+  }
+
+  function clickPlaceButton() {
+    const button = findPlaceButton();
+    if (!button) return false;
+
+    button.click();
+    return true;
+  }
+
+  function applySelections(options = {}) {
+    const appliedAmount = applyAmount();
+    const appliedQty = applyQuantity();
+
+    if (options.submit) {
+      window.setTimeout(clickPlaceButton, 50);
+    }
+
+    return appliedAmount || appliedQty;
   }
 
   function syncAmountFromPage() {
@@ -398,14 +448,14 @@
           <div class="bounty-helper-grid" data-role="amounts"></div>
           <span class="bounty-helper-label">Qty:</span>
           <div class="bounty-helper-grid" data-role="qtys"></div>
-          <button type="button" class="bounty-helper-main" id="bounty-helper-apply">Apply</button>
+          <button type="button" class="bounty-helper-main" id="bounty-helper-apply">Place</button>
           <div class="bounty-helper-summary" data-role="summary"></div>
         </div>
       `;
 
       panel
         .querySelector("#bounty-helper-apply")
-        .addEventListener("click", applySelections);
+        .addEventListener("click", () => applySelections({ submit: true }));
     }
 
     if (wrap.firstElementChild !== panel) {
