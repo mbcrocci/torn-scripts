@@ -2,6 +2,8 @@
 // @name         Torn Bounty Helper
 // @namespace    torn.bounty.helper
 // @version      0.2.0
+// @updateURL   https://github.com/mbcrocci/torn-scripts/raw/main/bounty_helper.js
+// @downloadURL https://github.com/mbcrocci/torn-scripts/raw/main/bounty_helper.js
 // @description  Quick amount and quantity helper for placing war bounties faster.
 // @author       mbcrocci
 // @match        https://www.torn.com/bounties.php*
