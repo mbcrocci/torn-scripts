@@ -8,6 +8,7 @@
 // @author       mbcrocci
 // @match        https://www.torn.com/bounties.php*
 // @grant        none
+// @license      MIT
 // ==/UserScript==
 
 (function () {
